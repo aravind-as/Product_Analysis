@@ -6,10 +6,10 @@ import time
 import pandas as pd
 import plotly.express as px
 import plotly.figure_factory as ff
+import streamlit as st
 options = Options()
 options.headless = True
 
-import streamlit as st
 
 
 # Function to find the links of products from Amazon website
@@ -37,11 +37,12 @@ def find_links(given_product):
         # Click the next page button
         browser.find_element(By.CLASS_NAME, 's-pagination-item.s-pagination-next.s-pagination-button.s-pagination-separator').click()
         # Wait for 15 seconds
-        browser.implicitly_wait(15)
+        browser.implicitly_wait(10)
     # Close the browser
     browser.close()
     # Return the list of product links
     return links
+
 
 
 # Function to extract details of the product from the product link
@@ -102,96 +103,78 @@ def details_of_product(link_of_product):
     # If the table is not found, catch the exception and continue
     except:
         pass
-    
     time.sleep(2)
     browser.close()
     return product_details
 
+def get_details(links_of_product):
+    list_of_details = []
+    for link in links_of_product:
+        details = details_of_product(link)
+        prdt_df = pd.DataFrame(details, index=[0])
+        list_of_details.append(prdt_df)
+        if len(list_of_details) == 5:
+            break
+    return list_of_details
+
+def preprocess_product_details(list_of_details):
+    prdt_table = pd.concat(list_of_details, ignore_index=True)
+    prdt_table = prdt_table.reset_index(drop=True)
+    prdt_table.fillna('N.A', inplace=True)
+    prdt_table['Best Sellers Rank'] = prdt_table['Best Sellers Rank'].str.replace('#', '').replace('\n', ' ')
+    prdt_table = prdt_table.drop('Customer Reviews', axis=1)
+    return prdt_table
+
 
 # Take the name of the product as input from the user
-name_of_product = input('State the product:')
+name_of_product = st.text_input('Enter the product name:')
 
 # Find the links of the product using the find_links function
 links_of_product = find_links(name_of_product)
 
-# Initialize an empty list to store the details of all products
-list_of_details = []
+# Get the details of the product using the details_of_product function
+list_of_details = get_details(links_of_product)
 
-# Loop through each link to get details of the product
-def getdetails(links_of_product):
-    for link in links_of_product:
-        # Get the details of the product using the details_of_product function
-        details = details_of_product(link)
-        # Create a pandas dataframe with the details
-        prdt_df = pd.DataFrame(details, index=[0])
-    
-        # Append the details to the list_of_details
-        list_of_details.append(prdt_df)
-    return list_of_details
-
-details=getdetails(links_of_product)
-
-
-def preprocess_product_details(list_of_details):
-    # Concatenate the details of all products into a single dataframe
-    prdt_table = pd.concat(list_of_details, ignore_index=True)
-
-    # Reset the index of the final dataframe
-    prdt_table = prdt_table.reset_index(drop=True)
-
-    # Fill NaN values with 'N.A'
-    prdt_table.fillna('N.A', inplace=True)
-
-    # Modify the 'Best Sellers Rank' column
-    prdt_table['Best Sellers Rank'] = prdt_table['Best Sellers Rank'].str.replace('#', '').replace('\n', ' ')
-
-    # Drop the 'Customer Reviews' column
-    prdt_table = prdt_table.drop('Customer Reviews', axis=1)
-
-    return prdt_table
-
-preprocess_product_details(list_of_details)
-
-
-fig = px.scatter(prdt_table,x ='Price', y='Rating Out of 5', color='Rating Out of 5', hover_data=[prdt_table['Name'].tolist()])
-fig.show()
+prdt_table = preprocess_product_details(list_of_details)
 
 
 
-
-fig = px.histogram(prdt_table, x='Rating Out of 5', color='Rating Out of 5', nbins=10,marginal='rug',hover_data=prdt_table.columns)
-fig.show()
-
-
-
-hist_data = [prdt_table['Rating Out of 5'].tolist()]
-group_lables = ['Rating Out of 5']
-chrt = ff.create_distplot(hist_data, group_lables)
-chrt.show()
-
-
-
-
-hist_data = [prdt_table['Price'].tolist()]
-group_lables = ['Price']
-chrt = ff.create_distplot(hist_data, group_lables, bin_size=0.5)
-chrt.show()
-
-
-
-column_data = prdt_table['Price']
-
-# Find the distribution of the column
-column_distribution = column_data.value_counts().reset_index()
-column_distribution.columns = ['Value', 'Count']
-
-# Visualize the distribution using a bar plot
-fig = px.bar(column_distribution, x='Value', y='Count', title='Distribution of {}'.format('Price'))
-fig.show()
-
+# Set page header
+st.title('Top ranked Products')
 
 # Display the DataFrame in Streamlit
 st.dataframe(prdt_table)
 
-# Display the scatter plot in Streamlit
-st.plotly_chart(fig)
+# Add visualizations
+st.subheader('Visualizations')
+
+# Generate distribution plot for Rating Out of 5
+hist_data_rating = [prdt_table['Rating Out of 5'].tolist()]
+group_labels_rating = ['Rating Out of 5']
+fig_dist_rating = ff.create_distplot(hist_data_rating, group_labels_rating)
+
+# Generate distribution plot for Price
+hist_data_price = [prdt_table['Price'].tolist()]
+group_labels_price = ['Price']
+fig_dist_price = ff.create_distplot(hist_data_price, group_labels_price, bin_size=0.5)
+
+# Generate bar plot for Price distribution
+column_data = prdt_table['Price']
+column_distribution = column_data.value_counts().reset_index()
+column_distribution.columns = ['Value', 'Count']
+fig_bar = px.bar(column_distribution, x='Value', y='Count', title='Distribution of Price')
+# Generate scatter plot
+fig_scatter = px.scatter(prdt_table, x='Price', y='Rating Out of 5', color='Rating Out of 5', hover_data=[prdt_table['Name'].tolist()])
+
+# Generate histogram plot
+fig_hist = px.histogram(prdt_table, x='Rating Out of 5', color='Rating Out of 5', nbins=10, marginal='rug', hover_data=prdt_table.columns)
+
+
+
+
+# Display all visualizations in a single page
+st.plotly_chart(fig_scatter)
+st.plotly_chart(fig_hist)
+st.plotly_chart(fig_dist_rating)
+st.plotly_chart(fig_dist_price)
+st.plotly_chart(fig_bar)
