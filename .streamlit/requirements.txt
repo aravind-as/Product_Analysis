@@ -4,3 +4,5 @@ plotly
 selenium
 undetected-chromedriver
 seleniumbase
+
+chromedriver-binary==114.0.5735.16
