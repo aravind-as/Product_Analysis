@@ -113,7 +113,7 @@ def get_details(links_of_product):
         details = details_of_product(link)
         prdt_df = pd.DataFrame(details, index=[0])
         list_of_details.append(prdt_df)
-        if len(list_of_details) == 5:
+        if len(list_of_details) == 3:
             break
     return list_of_details
 
@@ -126,24 +126,33 @@ def preprocess_product_details(list_of_details):
     return prdt_table
 
 
-# Take the name of the product as input from the user
-name_of_product = st.text_input('Enter the product name:')
-
-# Find the links of the product using the find_links function
-links_of_product = find_links(name_of_product)
-
-# Get the details of the product using the details_of_product function
-list_of_details = get_details(links_of_product)
-
-prdt_table = preprocess_product_details(list_of_details)
-
-
 
 # Set page header
 st.title('Top ranked Products')
 
-# Display the DataFrame in Streamlit
-st.dataframe(prdt_table)
+
+# Create a function to display the data table
+def show_data():
+    # Prompt the user to enter the name of the product
+    name_of_product = st.text_input('Enter the name of the product:')
+    if not name_of_product:
+        return
+    # Find the links for the product using the find_links function
+    links_of_product = find_links(name_of_product)
+    if not links_of_product:
+        st.write(f"No products found for '{name_of_product}'")
+        return
+    # Scrape the details of the product using the details_of_product function
+    list_of_details = get_details(links_of_product)
+
+    prdt_table = preprocess_product_details(list_of_details)
+    # Display the data table
+    st.write(prdt_table)
+    return prdt_table
+
+
+prdt_table=show_data()
+
 
 # Add visualizations
 st.subheader('Visualizations')
@@ -168,8 +177,6 @@ fig_scatter = px.scatter(prdt_table, x='Price', y='Rating Out of 5', color='Rati
 
 # Generate histogram plot
 fig_hist = px.histogram(prdt_table, x='Rating Out of 5', color='Rating Out of 5', nbins=10, marginal='rug', hover_data=prdt_table.columns)
-
-
 
 
 # Display all visualizations in a single page
