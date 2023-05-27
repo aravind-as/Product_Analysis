@@ -15,7 +15,7 @@ options.headless = True
 # Function to find the links of products from Amazon website
 def find_links(given_product):
     # Initialize a Chrome web browser
-    browser = webdriver.Firefox(options=options)
+    browser = webdriver.Chrome(options=options)
     # Open Amazon website
     browser.get('https://www.amazon.in')
     # Find the search bar and enter the given product name
